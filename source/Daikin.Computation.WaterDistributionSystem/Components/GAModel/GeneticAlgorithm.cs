@@ -4,13 +4,21 @@ using Daikin.Computation.WaterDistributionSystem.Interfaces;
 using System.Drawing;
 using System.Linq;
 namespace Daikin.Computation.WaterDistributionSystem.Components.GAModel;
+
+internal class GASolution
+{
+    public List<double> Flows { get; set; } = new();
+    public List<int> DiameterIndexes { get; set; } = new();
+}
+
 public class GeneticAlgorithm : Component, IDetectHandler<GAInputData, GAOutputData>
 {
     public List<CalcData> Solution;
+    public List<int> DiameterSolution;
     public WaterDistributionSystem WaterDistributionSystem { get; set; }
     internal Random random = new Random(1);
 
-    private async Task<double> FitnessFunction(List<double> solution, GAInputData inputData, CancellationToken cancellationToken)
+    private async Task<double> FitnessFunction(GASolution solution, GAInputData inputData, CancellationToken cancellationToken)
     {
         double Fitness = Math.Pow(10, 8);
         cancellationToken.ThrowIfCancellationRequested();
@@ -19,9 +27,18 @@ public class GeneticAlgorithm : Component, IDetectHandler<GAInputData, GAOutputD
         foreach (var solutionItem in Solution)
         {
             solutionItem.Id = Solution[i].Id;
-            solutionItem.WaterFlow = solution[i++];
+            solutionItem.WaterFlow = solution.Flows[i++];
             input.Add(solutionItem);
         };
+
+        int j = 0;
+        foreach (var pipe in WaterDistributionSystem.Schema.Pipes)
+        {
+            var idx = solution.DiameterIndexes[j];
+            if (idx < 0 || idx >= pipe.DiametersAdmitted.Count) idx = 0;
+            pipe.Diameter = pipe.DiametersAdmitted[idx];
+            j++;
+        }
 
         List<CalcData> inputSchema = CreateInputSchema(input);
 
@@ -132,6 +149,29 @@ public class GeneticAlgorithm : Component, IDetectHandler<GAInputData, GAOutputD
         }
         solution = CheckFlow(Solution, idUnits, minValue);
         return solution;
+    }
+
+    private List<int> GenerateRandomDiameterSolution()
+    {
+        List<int> diameters = new();
+        foreach (var pipe in WaterDistributionSystem.Schema.Pipes)
+        {
+            diameters.Add(random.Next(pipe.DiametersAdmitted.Count));
+        }
+        return diameters;
+    }
+
+    private List<int> GenerateFirstDiameterSolution()
+    {
+        List<int> diameters = new();
+        foreach (var pipe in WaterDistributionSystem.Schema.Pipes)
+        {
+            if (pipe.Diameter.HasValue)
+                diameters.Add(Math.Max(0, pipe.DiametersAdmitted.IndexOf(pipe.Diameter.Value)));
+            else
+                diameters.Add(0);
+        }
+        return diameters;
     }
     private List<double> GenerateFirstSolution(List<CalcData> Solution, IEnumerable<Guid> idUnits, double nominalValue, List<double> minValue, List<double> maxValue)
     {
@@ -271,19 +311,29 @@ public class GeneticAlgorithm : Component, IDetectHandler<GAInputData, GAOutputD
     // Algoritmo Genetico
     public async Task<GAOutputData> Detect(GAInputData inputData, CancellationToken cancellationToken)
     {
-        List<List<double>> population = new List<List<double>>();
+        List<GASolution> population = new List<GASolution>();
         List<double> BestFitness = new List<double>();
         Solution = WaterDistributionSystem.GetInputCalc();
+        DiameterSolution = new List<int>();
         GAOutputData output = new GAOutputData();
         var idUnits = WaterDistributionSystem.Schema.UnitBlocks.Select(x => x.Unit.Id);
 
         (var minFlowArray, var maxFlowArray) = GenerateMinAndMaxFlowArray(Solution, idUnits, inputData.minValue, inputData.maxValue);
 
-        population.Add(GenerateFirstSolution(Solution, idUnits, inputData.nominalValue, minFlowArray, maxFlowArray));
+        var first = new GASolution
+        {
+            Flows = GenerateFirstSolution(Solution, idUnits, inputData.nominalValue, minFlowArray, maxFlowArray),
+            DiameterIndexes = GenerateFirstDiameterSolution()
+        };
+        population.Add(first);
 
         for (int i = 1; i < inputData.populationSize; i++)
         {
-            population.Add(GenerateRandomSolution(Solution, idUnits, minFlowArray, maxFlowArray, inputData.waterDistributionSystemInput.AllowSwitchOffUnit));
+            population.Add(new GASolution
+            {
+                Flows = GenerateRandomSolution(Solution, idUnits, minFlowArray, maxFlowArray, inputData.waterDistributionSystemInput.AllowSwitchOffUnit),
+                DiameterIndexes = GenerateRandomDiameterSolution()
+            });
         }
 
         double alpha = 0.1;
@@ -297,8 +347,8 @@ public class GeneticAlgorithm : Component, IDetectHandler<GAInputData, GAOutputD
             }
             // Selection
             population = population.OrderBy(solution => fitnessScores[population.IndexOf(solution)]).ToList();
-            output.Solution = population.First();
-            output.Fitness = await FitnessFunction(output.Solution, inputData, cancellationToken);
+            output.Solution = population.First().Flows;
+            output.Fitness = await FitnessFunction(population.First(), inputData, cancellationToken);
             BestFitness.Add(output.Fitness);
             if (StopRun(BestFitness, inputData.generations)) break;
 
@@ -306,7 +356,7 @@ public class GeneticAlgorithm : Component, IDetectHandler<GAInputData, GAOutputD
 
             if (gen > inputData.generations / 2.0) alpha = 0.5;
             // Crossover e Mutazione
-            var children = new List<List<double>>();
+            var children = new List<GASolution>();
             while (children.Count < inputData.populationSize - selected.Count)
             {
                 var parent1 = selected[random.Next(selected.Count)];
@@ -319,17 +369,20 @@ public class GeneticAlgorithm : Component, IDetectHandler<GAInputData, GAOutputD
                     parent2 = selected[random.Next(selected.Count)];
                     count++;
                 }
-                var child = BLXAlphaCrossover(parent1, parent2, alpha, minFlowArray, maxFlowArray);
-                var flowsChild = CheckFlow(child, idUnits, minFlowArray);
-                var mutation = GaussianMutation(flowsChild, inputData.mutationRate, minFlowArray, maxFlowArray);
-                var flowsMutation = CheckFlow(mutation, idUnits, minFlowArray);
+                var flowsChild = BLXAlphaCrossover(parent1.Flows, parent2.Flows, alpha, minFlowArray, maxFlowArray);
+                flowsChild = CheckFlow(flowsChild, idUnits, minFlowArray);
+                var mutationFlows = GaussianMutation(flowsChild, inputData.mutationRate, minFlowArray, maxFlowArray);
+                mutationFlows = CheckFlow(mutationFlows, idUnits, minFlowArray);
+                var diamChild = CrossoverDiameters(parent1.DiameterIndexes, parent2.DiameterIndexes);
+                var diamMutation = MutateDiameters(diamChild, inputData.mutationRate);
 
                 // Check if the mutated child is a twin of any existing solution
-                bool isTwin = selected.Any(existing => AreTwins(flowsMutation, existing)) || children.Any(existing => AreTwins(flowsMutation, existing));
+                bool isTwin = selected.Any(existing => AreTwins(mutationFlows, existing.Flows)) ||
+                              children.Any(existing => AreTwins(mutationFlows, existing.Flows));
 
                 if (!isTwin)
                 {
-                    children.Add(flowsMutation);
+                    children.Add(new GASolution { Flows = mutationFlows, DiameterIndexes = diamMutation });
                 }
             }
             // Sostituzione
@@ -337,9 +390,9 @@ public class GeneticAlgorithm : Component, IDetectHandler<GAInputData, GAOutputD
 
 
         }
-        output.Solution = population.First();
+        output.Solution = population.First().Flows;
         CheckFlow(output.Solution, idUnits, minFlowArray);
-        output.Fitness = await FitnessFunction(output.Solution, inputData, cancellationToken);
+        output.Fitness = await FitnessFunction(population.First(), inputData, cancellationToken);
 
         return output;
     }
@@ -409,6 +462,33 @@ public class GeneticAlgorithm : Component, IDetectHandler<GAInputData, GAOutputD
             result.Add(flow);
         }
 
+        return result;
+    }
+
+    List<int> CrossoverDiameters(List<int> parent1, List<int> parent2)
+    {
+        List<int> result = new();
+        for (int i = 0; i < parent1.Count; i++)
+        {
+            result.Add(random.NextDouble() < 0.5 ? parent1[i] : parent2[i]);
+        }
+        return result;
+    }
+
+    List<int> MutateDiameters(List<int> diameters, double mutationRate)
+    {
+        List<int> result = new();
+        int index = 0;
+        foreach (var d in diameters)
+        {
+            if (random.NextDouble() < mutationRate / 100)
+            {
+                var pipe = WaterDistributionSystem.Schema.Pipes.ElementAt(index);
+                result.Add(random.Next(pipe.DiametersAdmitted.Count));
+            }
+            else result.Add(d);
+            index++;
+        }
         return result;
     }
 

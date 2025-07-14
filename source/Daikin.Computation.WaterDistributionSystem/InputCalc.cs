@@ -142,6 +142,7 @@ namespace Daikin.Computation.WaterDistributionSystem
         public double DeltaHeight { get; set; }
         public int NumberOfBends { get; set; }
         public double? Diameter { get; set; }
+        public List<double> DiametersAdmitted { get; set; } = new();
         public PipeMaterial Material { get; set; }
     }
     public class Link
