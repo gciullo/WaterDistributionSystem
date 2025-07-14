@@ -16,9 +16,10 @@ public class PipeComponentFromPipeEntityFactory : IComponentFactory<Components.P
         {
             Id = _entity.Id,
             DeltaHeight = _entity.DeltaHeight,
-            Diameter = _entity.Diameter,
+            Diameter = _entity.Diameter ?? _entity.DiametersAdmitted.FirstOrDefault(),
             Length = _entity.Length,
-            NumberOfBends = _entity.NumberOfBends
+            NumberOfBends = _entity.NumberOfBends,
+            DiametersAdmitted = _entity.DiametersAdmitted
         };
         component.Resistance = component.GetResistance();
         return component;

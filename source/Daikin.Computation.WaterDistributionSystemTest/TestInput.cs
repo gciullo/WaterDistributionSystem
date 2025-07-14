@@ -105,12 +105,12 @@ public class TestInput
     {
         return new List<Pipe>
                 {
-                    new Pipe { Id= new Guid("7f0ca73a-d87a-42ae-8306-cb10ad902dd7"), DeltaHeight=0, Length=15, NumberOfBends=0, Material=PipeMaterial.GalvanizedSteel,Diameter = 9.5 }, //da inizio a nodo1
-                    new Pipe { Id= new Guid("db8de47d-b37c-4f8c-8d00-d19d462ea4f5"), DeltaHeight=0, Length=10, NumberOfBends=1, Material=PipeMaterial.Pvc,Diameter = 9.5 }, //da nodo1 a FC1
-                    new Pipe { Id= new Guid("1fa31d2a-614d-4575-9a9d-1fee320130a3"), DeltaHeight=0, Length=5, NumberOfBends=2, Material=PipeMaterial.Pvc,Diameter = 9.5 }, //da nodo1 a FC2
-                    new Pipe { Id= new Guid("18b5e7e5-8032-4940-9728-69cf49e48be2"), DeltaHeight=0, Length=0.5, NumberOfBends=0, Material=PipeMaterial.Pvc,Diameter = 9.5 }, //da FC1 a nodo2
-                    new Pipe { Id= new Guid("8399e033-3539-4b81-bd4a-301ee0380f99"), DeltaHeight=0, Length=2, NumberOfBends=1, Material=PipeMaterial.GalvanizedSteel,Diameter = 9.5 }, //da FC2 a nodo2
-                    new Pipe { Id= new Guid("a1181174-a4b2-4c59-ad0e-6dddce434d35"), DeltaHeight=0, Length=10, NumberOfBends=3, Material=PipeMaterial.GalvanizedSteel,Diameter = 9.5 } //da nodo2 a fine
+                    new Pipe { Id= new Guid("7f0ca73a-d87a-42ae-8306-cb10ad902dd7"), DeltaHeight=0, Length=15, NumberOfBends=0, Material=PipeMaterial.GalvanizedSteel, Diameter = 9.5, DiametersAdmitted = new List<double>{9.5,12} }, //da inizio a nodo1
+                    new Pipe { Id= new Guid("db8de47d-b37c-4f8c-8d00-d19d462ea4f5"), DeltaHeight=0, Length=10, NumberOfBends=1, Material=PipeMaterial.Pvc, Diameter = 9.5, DiametersAdmitted = new List<double>{9.5,12} }, //da nodo1 a FC1
+                    new Pipe { Id= new Guid("1fa31d2a-614d-4575-9a9d-1fee320130a3"), DeltaHeight=0, Length=5, NumberOfBends=2, Material=PipeMaterial.Pvc, Diameter = 9.5, DiametersAdmitted = new List<double>{9.5,12} }, //da nodo1 a FC2
+                    new Pipe { Id= new Guid("18b5e7e5-8032-4940-9728-69cf49e48be2"), DeltaHeight=0, Length=0.5, NumberOfBends=0, Material=PipeMaterial.Pvc, Diameter = 9.5, DiametersAdmitted = new List<double>{9.5,12} }, //da FC1 a nodo2
+                    new Pipe { Id= new Guid("8399e033-3539-4b81-bd4a-301ee0380f99"), DeltaHeight=0, Length=2, NumberOfBends=1, Material=PipeMaterial.GalvanizedSteel, Diameter = 9.5, DiametersAdmitted = new List<double>{9.5,12} }, //da FC2 a nodo2
+                    new Pipe { Id= new Guid("a1181174-a4b2-4c59-ad0e-6dddce434d35"), DeltaHeight=0, Length=10, NumberOfBends=3, Material=PipeMaterial.GalvanizedSteel, Diameter = 9.5, DiametersAdmitted = new List<double>{9.5,12} } //da nodo2 a fine
                 };
     }
 

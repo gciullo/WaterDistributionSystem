@@ -16,6 +16,7 @@ public class Pipe : Component, IDetectHandler<PipeInputData, PipeOutputData>
     public double Resistance { get; set; }
     public int NumberOfBends { get; set; }
     public double? Diameter { get; set; }
+    public List<double> DiametersAdmitted { get; set; } = new();
     public EnumData.PipeMaterial Material { get; set; }
     double Factor = 1.2;
 
@@ -26,7 +27,30 @@ public class Pipe : Component, IDetectHandler<PipeInputData, PipeOutputData>
     {
         cancellationToken.ThrowIfCancellationRequested();
         PipeOutputData output = new PipeOutputData();
-        output.PressureDrop = Math.Round(Resistance * Math.Pow(input.WaterFlow, 2), 2);
+
+        var c = Material switch
+        {
+            EnumData.PipeMaterial.GalvanizedSteel => 120,
+            EnumData.PipeMaterial.BlackSteel => 120,
+            EnumData.PipeMaterial.Copper => 140,
+            EnumData.PipeMaterial.Iron => 100,
+            EnumData.PipeMaterial.Pvc => 150,
+            EnumData.PipeMaterial.Cpvc => 150,
+            EnumData.PipeMaterial.PolyEthylene => 140,
+            EnumData.PipeMaterial.PolyPropylene => 150,
+            _ => 0,
+        };
+
+        var J = 10.675 * Math.Pow(input.WaterFlow / 1000, 1.852) /
+                (Math.Pow(c, 1.852) * Math.Pow(Diameter!.Value / 1000, 4.8704));
+        var pressureDrop = J * Length * 9.81;
+
+        var alpha = -0.078 * Math.Log(Diameter!.Value) + 0.6815;
+        var bendsPressureDrop = NumberOfBends * (alpha * Math.Pow(input.WaterFlow / 1000 /
+                    (Math.PI * Math.Pow(Diameter!.Value / 1000, 2) / 4), 2) / 2);
+
+        pressureDrop += bendsPressureDrop;
+        output.PressureDrop = Math.Round(pressureDrop, 2);
 
         return output;
     }
