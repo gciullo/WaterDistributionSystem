@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+	 <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
+	 <PackageReference Include="Microsoft.SourceLink.AzureRepos.Git" Version="1.1.1" PrivateAssets="All" />
+    <PackageReference Include="Daikin.Computation.CommonLib" Version="3.0.34" />
+  </ItemGroup>
+
+</Project>

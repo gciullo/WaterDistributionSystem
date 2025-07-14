@@ -1,0 +1,17 @@
+mode: Mainline
+branches:
+ dev:
+  regex: ^dev(elop)?(ment)?$
+  source-branches: []
+  is-release-branch: false
+  is-mainline: false
+  tag: alpha
+ hotfix:
+  tag: alpha
+ feature:
+  tag: alpha
+ main:
+  tag: '' 
+ignore:
+ sha: []
+merge-message-formats: {}
